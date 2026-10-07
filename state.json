@@ -1,11 +1,9 @@
 {
   "status": {
-    "b-maroon-sunray": "out",
     "b1-maroon": "out",
     "b1-light-blue-sunray": "out"
   },
   "unknown_streak": {
-    "b-maroon-sunray": 0,
     "b1-maroon": 0,
     "b1-light-blue-sunray": 0
   },

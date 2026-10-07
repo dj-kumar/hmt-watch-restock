@@ -34,17 +34,13 @@ WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
 UNKNOWN_ALERT_AFTER = 3
 
 TARGETS = [
-    {"key": "b-maroon-sunray",
-     "name": "Kohinoor Quartz B Maroon Sunray",
-     "price": "₹2,899",
-     "url": "https://www.hmtwatches.store/product/77733243-645c-4eac-8e69-63425e1cc09b"},
     {"key": "b1-maroon",
      "name": "Kohinoor Quartz B1 - Maroon",
-     "price": "₹2,799",
+     "price": "₹2,899",
      "url": "https://www.hmtwatches.store/product/0035cf80-48d5-4cf3-a02f-1f36b01071a5"},
     {"key": "b1-light-blue-sunray",
      "name": "Kohinoor Quartz B1 - Light Blue Sunray",
-     "price": "₹2,375",
+     "price": "₹2,899",
      "url": "https://www.hmtwatches.store/product/3f9c0b65-255a-46d6-b957-0b5c51b9cdd6"},
 ]
 
