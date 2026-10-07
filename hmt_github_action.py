@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Single-shot HMT Kohinoor stock check, designed to run on GitHub Actions
-(see .github/workflows/hmt-watch.yml). It is triggered every 5 minutes by
-an external scheduler (cron-job.org), with GitHub's own schedule as a backup.
+(see .github/workflows/hmt-watch.yml). It is triggered by
+an external scheduler (cron-job.org, every 2 minutes), with GitHub's own schedule as a backup.
 
 - Reads state.json (committed in the repo) for previous statuses.
 - Finds each watch on its product page by the SKU in its URL, so it never
@@ -11,6 +11,9 @@ an external scheduler (cron-job.org), with GitHub's own schedule as a backup.
 - Warns on Discord if a watch can't be checked several runs in a row
   (site down, blocked, or page layout changed), and again when it recovers.
 - Writes state.json, plus last_check.txt once a day as a heartbeat.
+
+Send a Discord test message (no stock check):  set SEND_TEST_MESSAGE=true,
+or run the workflow from the Actions tab with "Send a test message" ticked.
 
 Run locally to test:  python hmt_github_action.py
 (Without DISCORD_WEBHOOK_URL set it just prints what it would send.)
@@ -125,6 +128,11 @@ def load_state():
 
 
 def main():
+    if os.environ.get("SEND_TEST_MESSAGE", "").lower() == "true":
+        ok = discord_post("🧪 **HMT watcher test** - Discord alerts are working. "
+                          "You'll get a 🚨 message here when a watch is back in stock.")
+        raise SystemExit(0 if ok else 1)
+
     first_run = not os.path.exists(STATE_FILE)
     state = load_state()
     status, streak, alerted = state["status"], state["unknown_streak"], state["unknown_alerted"]

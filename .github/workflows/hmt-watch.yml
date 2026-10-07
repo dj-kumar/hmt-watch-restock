@@ -1,8 +1,13 @@
 name: HMT Kohinoor stock watch
 
 on:
-  # Main trigger: cron-job.org calls the workflow_dispatch API every 5 minutes.
+  # Main trigger: cron-job.org calls the workflow_dispatch API every 2 minutes.
   workflow_dispatch:
+    inputs:
+      test_discord:
+        description: "Send a test message to Discord instead of checking stock"
+        type: boolean
+        default: false
   # Backup in case the external trigger stops. GitHub often delays or skips
   # frequent schedules, so this is a safety net, not the main clock.
   schedule:
@@ -31,11 +36,13 @@ jobs:
       - name: Check HMT stock
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SEND_TEST_MESSAGE: ${{ inputs.test_discord }}
         run: python hmt_github_action.py
 
       # Commits only when stock status changes, plus a once-a-day heartbeat
       # (last_check.txt) so GitHub doesn't disable the workflow for inactivity.
       - name: Save state
+        if: ${{ inputs.test_discord != true }}
         run: |
           git config user.name "hmt-watch"
           git config user.email "hmt-watch@local"
