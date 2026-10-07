@@ -1,21 +1,30 @@
 name: HMT Kohinoor stock watch
 
-# GitHub's minimum schedule interval is 5 minutes.
 on:
+  # Main trigger: cron-job.org calls the workflow_dispatch API every 5 minutes.
+  workflow_dispatch:
+  # Backup in case the external trigger stops. GitHub often delays or skips
+  # frequent schedules, so this is a safety net, not the main clock.
   schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:  # lets you trigger a manual test run from the Actions tab
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: write  # needed to commit state.json / last_check.txt back
 
+# Never run two checks at once (external trigger + backup schedule could
+# overlap); a queued run waits instead of racing on the git push.
+concurrency:
+  group: hmt-watch
+  cancel-in-progress: false
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -24,12 +33,15 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python hmt_github_action.py
 
-      # Commit state + heartbeat every run. This also keeps the repo "active"
-      # so GitHub never auto-disables the schedule for inactivity.
+      # Commits only when stock status changes, plus a once-a-day heartbeat
+      # (last_check.txt) so GitHub doesn't disable the workflow for inactivity.
       - name: Save state
         run: |
           git config user.name "hmt-watch"
           git config user.email "hmt-watch@local"
           git add state.json last_check.txt
-          git diff --staged --quiet || git commit -m "stock check $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push
+          if ! git diff --staged --quiet; then
+            git commit -m "stock check $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git pull --rebase
+            git push
+          fi
