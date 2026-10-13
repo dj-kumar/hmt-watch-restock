@@ -58,14 +58,47 @@ def sku_from_url(url):
     return url.rstrip("/").rsplit("/", 1)[-1]
 
 
+def _in_stock(buying_options):
+    try:
+        flag = buying_options["singlePurchase"]["availability"]["inStock"]
+    except (KeyError, TypeError):
+        return None
+    return flag if isinstance(flag, bool) else None
+
+
 def sku_stock(html, sku):
     """Stock flag of the variant whose SKU is `sku`, or None if not found.
 
-    Each variant in the page data looks like
-      {"sku":"<uuid>","variantDimensions":...,"buyingOptions":{...
-        "availability":{"inStock":true|false,...}}}
-    The search is bounded by the next variant so it can't spill over.
+    The page embeds its data as JSON in <script id="__NEXT_DATA__">. Since
+    Oct 2026 each variant of the product sits in catalog.variantsDetails as
+      {"sku":"<uuid>","variantAttributes":{..."buyingOptions":{"singlePurchase":
+        {"availability":{"inStock":true|false,...}}}}}
+    Older pages put "buyingOptions" directly on the variant. Only objects whose
+    own "sku" matches are read, so related products on the page are ignored.
     """
+    nd = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
+    if nd:
+        try:
+            data = json.loads(nd.group(1))
+        except ValueError:
+            data = None
+        stack = [data]
+        while stack:
+            o = stack.pop()
+            if isinstance(o, dict):
+                if o.get("sku") == sku:
+                    attrs = o.get("variantAttributes")
+                    for bo in (o.get("buyingOptions"),
+                               attrs.get("buyingOptions") if isinstance(attrs, dict) else None):
+                        flag = _in_stock(bo)
+                        if flag is not None:
+                            return flag
+                stack.extend(o.values())
+            elif isinstance(o, list):
+                stack.extend(o)
+
+    # Fallback for the old layout: {"sku":"<uuid>","variantDimensions":...,
+    # "buyingOptions":{..."availability":{"inStock":...}}}, bounded by the next variant.
     m = re.search(r'"sku"\s*:\s*"' + re.escape(sku) + r'"\s*,\s*"variantDimensions"', html)
     if not m:
         return None
