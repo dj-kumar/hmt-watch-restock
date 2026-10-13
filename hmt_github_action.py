@@ -68,7 +68,27 @@ def dump_page_hints(html, sku):
         print(f"  {pat!r}: {len(hits)} hits", flush=True)
         for i in hits[:2]:
             print("    ..." + html[max(0, i - 250):i + 250].replace("\n", " ") + "...", flush=True)
-    print("  head: " + html[:1500].replace("\n", " "), flush=True)
+    for i in [m.start() for m in re.finditer(re.escape(sku), html)]:
+        print("  SKU@%d: ...%s..." % (i, html[max(0, i - 120):i + 400].replace("\n", " ")), flush=True)
+    nd = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
+    if not nd:
+        print("  no __NEXT_DATA__", flush=True)
+        return
+    data = json.loads(nd.group(1))
+
+    def walk(o, path):
+        if isinstance(o, dict):
+            if sku in [v for v in o.values() if isinstance(v, str)]:
+                small = {k: (v if not isinstance(v, (dict, list)) or len(json.dumps(v)) < 400
+                             else f"<{type(v).__name__} {len(json.dumps(v))}ch>")
+                         for k, v in o.items()}
+                print(f"  OBJ {path}: {json.dumps(small)[:1500]}", flush=True)
+            for k, v in o.items():
+                walk(v, f"{path}.{k}")
+        elif isinstance(o, list):
+            for n, v in enumerate(o):
+                walk(v, f"{path}[{n}]")
+    walk(data, "$")
 
 
 def sku_from_url(url):
