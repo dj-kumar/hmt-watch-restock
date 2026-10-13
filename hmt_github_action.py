@@ -51,7 +51,24 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
 
 def fetch(url):
     req = urllib.request.Request(url, headers=UA)
-    return urllib.request.urlopen(req, timeout=30).read().decode("utf-8", "replace")
+    resp = urllib.request.urlopen(req, timeout=30)
+    html = resp.read().decode("utf-8", "replace")
+    print(f"fetched {url}: HTTP {resp.status}, final url {resp.geturl()}, {len(html)} chars",
+          flush=True)
+    return html
+
+
+def dump_page_hints(html, sku):
+    """Print what the page looks like, to diagnose a missing stock flag."""
+    title = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
+    print(f"  title: {title.group(1).strip()[:200] if title else None}", flush=True)
+    for pat in [sku, "inStock", "availability", "variantDimensions", "InStock",
+                "OutOfStock", "stock", "Sold out", "Add to"]:
+        hits = [m.start() for m in re.finditer(re.escape(pat), html)]
+        print(f"  {pat!r}: {len(hits)} hits", flush=True)
+        for i in hits[:2]:
+            print("    ..." + html[max(0, i - 250):i + 250].replace("\n", " ") + "...", flush=True)
+    print("  head: " + html[:1500].replace("\n", " "), flush=True)
 
 
 def sku_from_url(url):
@@ -87,6 +104,7 @@ def check_all():
         out[t["key"]] = sku_stock(html, sku_from_url(t["url"]))
         if out[t["key"]] is None:
             print(f"stock flag not found for {t['name']} (page layout changed?)", flush=True)
+            dump_page_hints(html, sku_from_url(t["url"]))
     return out
 
 
