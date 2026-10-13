@@ -90,6 +90,18 @@ def dump_page_hints(html, sku):
                 walk(v, f"{path}[{n}]")
     walk(data, "$")
 
+    def strip(o):
+        if isinstance(o, dict):
+            return {k: ("<%dch>" % len(v) if isinstance(v, str) and len(v) > 150 else strip(v))
+                    for k, v in o.items()}
+        if isinstance(o, list):
+            return [strip(v) for v in o]
+        return o
+    cat = strip(data["props"]["pageProps"].get("catalog"))
+    txt = json.dumps(cat)
+    for n in range(0, len(txt), 3000):
+        print("  CATALOG: " + txt[n:n + 3000], flush=True)
+
 
 def sku_from_url(url):
     return url.rstrip("/").rsplit("/", 1)[-1]
