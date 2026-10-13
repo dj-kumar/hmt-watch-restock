@@ -4,8 +4,11 @@
     "b1-light-blue-sunray": "out"
   },
   "unknown_streak": {
-    "b1-maroon": 2,
-    "b1-light-blue-sunray": 2
+    "b1-maroon": 3,
+    "b1-light-blue-sunray": 3
   },
-  "unknown_alerted": {}
+  "unknown_alerted": {
+    "b1-maroon": true,
+    "b1-light-blue-sunray": true
+  }
 }
