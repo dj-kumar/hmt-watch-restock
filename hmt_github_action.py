@@ -59,11 +59,15 @@ def sku_from_url(url):
 
 
 def _in_stock(buying_options):
+    """True if the site says the variant is in stock OR buyable, False if it
+    says neither, None if it gives no flags."""
     try:
-        flag = buying_options["singlePurchase"]["availability"]["inStock"]
+        a = buying_options["singlePurchase"]["availability"]
     except (KeyError, TypeError):
         return None
-    return flag if isinstance(flag, bool) else None
+    flags = [a.get(k) for k in ("inStock", "isBuyable")] if isinstance(a, dict) else []
+    flags = [f for f in flags if isinstance(f, bool)]
+    return any(flags) if flags else None
 
 
 def sku_stock(html, sku):

@@ -51,6 +51,58 @@ for k, v in combos.items():
     print(f"inStock={k[0]} isBuyable={k[1]}: {len(v)}")
 print("non-product links:", sorted(l for l in links if "/product/" not in l)[:60])
 
+# Scan every product page listed in the sitemap until a few in-stock ones turn up.
+import time, urllib.request
+sm_urls, product_urls = [], []
+try:
+    robots = w.fetch("https://www.hmtwatches.store/robots.txt")
+    print("robots.txt:", robots[:600].replace("\n", " | "))
+    sm_urls = re.findall(r"(?im)^sitemap:\s*(\S+)", robots)
+except Exception as e:
+    print("robots.txt failed:", e)
+sm_urls = sm_urls or ["https://www.hmtwatches.store/sitemap.xml"]
+seen_sm = set()
+while sm_urls and len(seen_sm) < 20:
+    sm = sm_urls.pop(0)
+    if sm in seen_sm:
+        continue
+    seen_sm.add(sm)
+    try:
+        xml = w.fetch(sm)
+    except Exception as e:
+        print("sitemap failed", sm, e)
+        continue
+    locs = re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", xml)
+    print(f"sitemap {sm}: {len(locs)} urls; sample {locs[:3]}")
+    for l in locs:
+        (sm_urls if l.endswith(".xml") else product_urls).append(l)
+product_urls = [u for u in dict.fromkeys(product_urls) if "/product/" in u]
+print(f"{len(product_urls)} product urls in sitemap")
+checked = 0
+for url in product_urls[:250]:
+    sku = url.rstrip("/").rsplit("/", 1)[-1]
+    if sku in found:
+        continue
+    try:
+        html = urllib.request.urlopen(urllib.request.Request(url, headers=w.UA), timeout=30).read().decode("utf-8", "replace")
+    except Exception as e:
+        print("  fetch failed", url, e)
+        continue
+    checked += 1
+    data = next_data(html)
+    for v in ((data or {}).get("props", {}).get("pageProps", {}).get("catalog") or {}).get("variantsDetails", []):
+        a = avail(v)
+        if a is not None and v.get("sku") not in found:
+            found[v["sku"]] = ((data["props"]["pageProps"]["catalog"].get("name")), a)
+            key = (a.get("inStock"), a.get("isBuyable"))
+            combos.setdefault(key, []).append((v["sku"], found[v["sku"]][0], a))
+    if sum(len(v) for k, v in combos.items() if k[0] or k[1]) >= 4:
+        break
+    time.sleep(0.3)
+print(f"checked {checked} product pages; now {len(found)} variants:")
+for k, v in combos.items():
+    print(f"inStock={k[0]} isBuyable={k[1]}: {len(v)}")
+
 ins = [x for k, v in combos.items() if k[0] or k[1] for x in v]
 print(f"\n{len(ins)} in stock or buyable:")
 for sku, name, a in ins[:10]:
