@@ -37,7 +37,7 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SEND_TEST_MESSAGE: ${{ inputs.test_discord }}
-        run: python probe.py
+        run: python -u probe.py
 
       # Commits only when stock status changes, plus a once-a-day heartbeat
       # (last_check.txt) so GitHub doesn't disable the workflow for inactivity.

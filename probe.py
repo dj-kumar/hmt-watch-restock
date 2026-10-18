@@ -1,5 +1,6 @@
 """One-off check: does the watcher's parser read inStock=true correctly?"""
-import json, re
+import json, re, time
+START = time.time()
 import hmt_github_action as w
 
 PAGES = [w.TARGETS[0]["url"], "https://www.hmtwatches.store/"]
@@ -80,11 +81,14 @@ product_urls = [u for u in dict.fromkeys(product_urls) if "/product/" in u]
 print(f"{len(product_urls)} product urls in sitemap")
 checked = 0
 for url in product_urls[:250]:
+    if time.time() - START > 150:
+        print('time budget reached')
+        break
     sku = url.rstrip("/").rsplit("/", 1)[-1]
     if sku in found:
         continue
     try:
-        html = urllib.request.urlopen(urllib.request.Request(url, headers=w.UA), timeout=30).read().decode("utf-8", "replace")
+        html = urllib.request.urlopen(urllib.request.Request(url, headers=w.UA), timeout=10).read().decode("utf-8", "replace")
     except Exception as e:
         print("  fetch failed", url, e)
         continue
